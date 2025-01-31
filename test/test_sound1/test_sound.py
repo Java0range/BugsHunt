@@ -16,5 +16,3 @@ while 1:
                 sound1.play()
 
     pg.time.delay(20)
-
-    ivanplanschet @ gmail.com
