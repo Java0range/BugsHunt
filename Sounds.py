@@ -18,6 +18,9 @@ class Sounds:
         self.points_score = pg.mixer.Sound('../../data/points_score.mp3')
         self.points_score.set_volume(0.4)
 
+        self.game_over = pg.mixer.Sound('../../data/game_over.mp3')
+        self.game_over.set_volume(0.4)
+
     def play_shot(self):
         self.sound_gun.play()
 
@@ -31,7 +34,7 @@ class Sounds:
         self.start_game.play()
 
     def play_game_over(self):
-        pass
+        self.game_over.play()
 
     def play_points_score(self):
         self.points_score.play()
