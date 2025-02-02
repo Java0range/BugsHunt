@@ -13,8 +13,6 @@ while 1:
 
         elif i.type == pg.MOUSEBUTTONUP:
             if i.button == 1:
-                pg.mixer.music.set_volume(0.5)
                 sound1.play()
 
     pg.time.delay(20)
-
