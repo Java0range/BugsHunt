@@ -1,10 +1,11 @@
 import pygame as pg
 import sys
 from Sounds import Sounds
+
 pg.init()
 so = Sounds()
 sc = pg.display.set_mode((400, 300))
-
+so.play_music()
 
 while 1:
     for i in pg.event.get():

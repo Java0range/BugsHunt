@@ -1,4 +1,5 @@
 import pygame as pg
+import pygame.mixer_music
 
 
 class Sounds:
@@ -21,17 +22,21 @@ class Sounds:
         self.game_over = pg.mixer.Sound('../../data/game_over.mp3')
         self.game_over.set_volume(0.4)
 
+        pg.mixer_music.load('../../data/Bugs Hunt - Soundtrack (IVJN).wav')
+        pg.mixer.music.set_volume(0.5)
+
+
     def play_shot(self):
         self.sound_gun.play()
 
     def play_music(self):
-        pass
+        pg.mixer.music.play()
 
     def play_fall(self):
         self.sound_fall.play()
 
     def play_start(self):
-        self.start_game.play()
+        self.start_game.play(-1)
 
     def play_game_over(self):
         self.game_over.play()
