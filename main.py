@@ -1,5 +1,6 @@
 import pygame
 from Score import load_score, save_score
+from Sounds import Sounds
 
 # инициализация pygame
 pygame.init()
@@ -15,6 +16,9 @@ play_button = pygame.Rect(355, 290, 95, 48)
 # фоны
 background_image = pygame.image.load('./data/menu_background.png').convert()
 
+# инициализация звуков
+sounds = Sounds()
+
 # шрифты
 font = pygame.font.SysFont("Times New Roman", 20)
 
@@ -26,6 +30,7 @@ while running:
         if main_menu:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if play_button.collidepoint(event.pos):
+                    sounds.play_start()
                     print("Старт игры!")
                     main_menu = False
     screen.fill((255, 255, 255))
