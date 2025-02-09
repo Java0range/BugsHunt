@@ -364,7 +364,7 @@ def start_game():
 
     pygame.mouse.set_visible(False)  # Погашение системного курсора
     SPAWNBUGEVENT = pygame.USEREVENT + 1
-    pygame.time.set_timer(SPAWNBUGEVENT, TIME - 2000)
+    pygame.time.set_timer(SPAWNBUGEVENT, TIME)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
