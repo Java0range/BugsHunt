@@ -8,8 +8,11 @@ FPS = 60
 SIZE = WIDTH, HEIGHT = 800, 540
 TIME = 3000
 SCORE = 0
+COUNT_LIVES = 8
 screen_game = pygame.display.set_mode(SIZE)
 clock = pygame.time.Clock()
+text_lmb_active = True
+text_rmb_active = False
 
 
 def load_image(name, colorkey=None):  # Удобная замена функции pygame.image.load()
@@ -73,11 +76,13 @@ class Bug(pygame.sprite.Sprite):
     def update(self, arg=None):
         if (pygame.sprite.collide_mask(self, cursor) and not self.bug_at_the_spawn_point_flag
                 and arg.type == pygame.MOUSEBUTTONDOWN and self.alive_flag and not self.run_away_flag):
-            self.alive_flag = False
-            change_standart_speed(1)
+            if arg.button == 1 and text_lmb_active or arg.button == 3 and text_rmb_active:
+                self.alive_flag = False
+                change_standart_speed(1)
         if self.count_of_collide_bug <= 0 and not self.run_away_flag:
             self.run_away_flag = True
             change_standart_speed(-1)
+            change_count_lives(1)
         if self.run_away_flag:
             self.image = self.bug_states['run_away']
             self.rect = self.rect.move(0, -5)
@@ -119,6 +124,11 @@ def change_standart_speed(number):
         standard_speed += number
 
 
+def change_count_lives(number):
+    global COUNT_LIVES
+    COUNT_LIVES -= number
+
+
 coeffs_x = [i / 100 for i in
             range(50, 100)]  # Чтобы баги летели не только под углом 45 градусов, но и хотя бы как-то искривленно
 coeffs_y = [i / 100 for i in range(50, 100)]
@@ -127,6 +137,8 @@ divider = 60  # Делитель, на который делится standart_sc
 limit_speed_bugs = {'red': 25, 'pink': 20, 'yellow': 15, 'cyan': 10}  # Это нужно для того, чтобы не было ошибок,
 # связанных со слишком большими числами
 price_bugs = {'red': 100, 'pink': 75, 'yellow': 50, 'cyan': 25}  # Кол-во очков, которое пойманный баг принесет, после
+
+
 # умножится на коэфициент, полученный при делении standart_score на divider
 
 
@@ -210,11 +222,34 @@ class Spawner(pygame.sprite.Sprite):
 class Cursor(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__(cursor_group, all_sprites)
-        self.image = load_image('cursor.png')
+        self.image_cursor = load_image('cursor.png')
+        self.image_paused_menu = load_image('paused_menu_cursor.png')
+        self.image_paused_menu_2 = load_image('paused_menu_cursor_2.png')
+        self.image = self.image_cursor
         self.rect = self.image.get_rect()
+        self.flag_lmb = False
+        self.flag_rmb = False
         self.mask = pygame.mask.from_surface(self.image)
 
-    def update(self, pos):
+    def update(self, pos, flag_game_stop, lmb, rmb):
+        self.flag_lmb = False
+        self.flag_rmb = False
+        if not flag_game_stop:
+            self.image = self.image_cursor
+        else:
+            flag_over_loop = False
+            for rect in [lmb, rmb]:
+                if pygame.sprite.collide_mask(self, rect):
+                    if rect.name == 'lmb':
+                        self.flag_lmb = True
+                    if rect.name == 'rmb':
+                        self.flag_rmb = True
+                    self.image = self.image_paused_menu_2
+                    self.mask = pygame.mask.from_surface(self.image)
+                    flag_over_loop = True
+            if not flag_over_loop:
+                self.image = self.image_paused_menu
+                self.mask = pygame.mask.from_surface(self.image)
         self.rect.x = pos[0]
         self.rect.y = pos[1]
 
@@ -235,6 +270,16 @@ class ScoreBug(pygame.sprite.Sprite):
         self.number_time -= 1
 
 
+class Rectangle(pygame.sprite.Sprite):
+    def __init__(self, x1, y1, image, name):
+        super().__init__(rectangles_group, all_sprites)
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.x = x1
+        self.rect.y = y1
+        self.name = name
+
+
 all_sprites = pygame.sprite.Group()
 bugs_group = pygame.sprite.Group()
 horizontal_borders_group = pygame.sprite.Group()
@@ -242,30 +287,45 @@ vertical_borders_group = pygame.sprite.Group()
 spawner_group = pygame.sprite.Group()
 cursor_group = pygame.sprite.Group()
 score_of_bug_group = pygame.sprite.Group()
+rectangles_group = pygame.sprite.Group()
 
 red_bugs_group = pygame.sprite.Group()
 pink_bugs_group = pygame.sprite.Group()
 cyan_bugs_group = pygame.sprite.Group()
 yellow_bugs_group = pygame.sprite.Group()
 
-spawner = Spawner()
 cursor = Cursor()
+spawner = Spawner()
 
 color = (102, 0, 255)
 color_score_bug_text = (250, 215, 0)
 green = pygame.Color('green')
 yellow = pygame.Color('yellow')
+dark_green = (0, 71, 49)
 
 
-def terminate():
+def terminate():  # Выход из игры
     pygame.quit()
     exit()
 
 
+font = pygame.font.Font(None, 100)
+font_buttons = pygame.font.Font(None, 50)
+font_score_bug = pygame.font.Font(None, 30)
+text = font.render('Pause menu', True, green)
+
+length = 5  # Величина, на которую сдигается прямоугольник с двух сторон
+w = h = length * 2  # Ширина и высота прямоугольников
+height_pause = 10
+height_lmb = 150
+height_rmb = 240
+dictionary_text_activites = {True: 'On', False: 'Off'}
+
+
 def start_game():
+    global text_lmb_active, text_rmb_active
     screen_fixed_elements = pygame.Surface(SIZE)  # Отдельное окно, на котором нарисуются неподвижные объекты 1 раз
-    screen_stop_game = pygame.Surface(SIZE)
-    screen_stop_game.fill(pygame.Color(color))
+    screen_stop_game = load_image('pause_background.png')
     Border(0, 0, WIDTH - 1, 0)
     Border(0, HEIGHT - 1, WIDTH - 1, HEIGHT - 1)
     Border(0, 0, 0, HEIGHT - 1)
@@ -274,36 +334,24 @@ def start_game():
     horizontal_borders_group.draw(screen_fixed_elements)
     spawner_group.draw(screen_fixed_elements)
 
-    length = 5  # Величина, на которую сдигается прямоугольник с двух сторон
-    w = h = length * 2  # Ширина и высота прямоугольников
-    height_pause = 10
-    height_lmb = 150
-    height_rmb = 225
-    text_lmb_active = 'On'
-    text_rmb_active = 'Off'
-
-    font = pygame.font.Font(None, 100)
-    font_buttons = pygame.font.Font(None, 50)
-    font_score_bug = pygame.font.Font(None, 30)
-
-    text = font.render('Pause menu', True, green)
-    text_lmb = font_buttons.render(f'LMB: {text_lmb_active}', True, yellow)
-    text_rmb = font_buttons.render(f'RMB: {text_rmb_active}', True, yellow)
-
-    screen_stop_game.blit(text, (WIDTH // 2 - text.get_width() // 2, height_pause))
-    screen_stop_game.blit(text_lmb, (WIDTH // 2 - text.get_width() // 4, height_lmb))
-    screen_stop_game.blit(text_rmb, (WIDTH // 2 - text.get_width() // 4, height_rmb))
+    text_lmb = font_buttons.render(f'LMB: {dictionary_text_activites[text_lmb_active]}', True, yellow)
+    text_rmb = font_buttons.render(f'RMB: {dictionary_text_activites[text_rmb_active]}', True, yellow)
 
     maxi_width = max(map(lambda z: z.get_width(), [text_lmb, text_rmb])) + w  # Чтобы было красиво,
     # прямоугольники все выравниваются под самый длинный прямоугольник
 
-    rect_of_text_lmb = pygame.Rect(WIDTH // 2 - text.get_width() // 4 - length, height_lmb - length,
-                                   maxi_width, text_lmb.get_height() + h)
-    rect_of_text_rmb = pygame.Rect(WIDTH // 2 - text.get_width() // 4 - length, height_rmb - length,
-                                   maxi_width, text_rmb.get_height() + h)
+    rect_of_text_lmb = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_lmb - length,
+                                 pygame.Surface((maxi_width, text_lmb.get_height() + h)), 'lmb')
+    rect_of_text_rmb = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_rmb - length,
+                                 pygame.Surface((maxi_width, text_rmb.get_height() + h)), 'rmb')
 
-    pygame.draw.rect(screen_stop_game, yellow, rect_of_text_lmb, 1)
-    pygame.draw.rect(screen_stop_game, yellow, rect_of_text_rmb, 1)
+    pygame.draw.rect(screen_stop_game, dark_green, rect_of_text_lmb)
+    pygame.draw.rect(screen_stop_game, dark_green, rect_of_text_rmb)
+
+    screen_stop_game.blit(text, (WIDTH // 2 - text.get_width() // 2, height_pause))
+    screen_stop_game.blit(text_lmb, (WIDTH // 2 - text.get_width() // 4, height_lmb))
+    screen_stop_game.blit(text_rmb, (WIDTH // 2 - text.get_width() // 4, height_rmb))
+    cursor.functions = {'lmb': text_lmb_active, 'rmb': text_rmb_active}
 
     dx, dy = randint(x + 3, screen_game.get_width() - 35), randint(y + 3, screen_game.get_height() - 35)
 
@@ -312,10 +360,11 @@ def start_game():
 
     stop_game_flag = False
     flag_set_time_spawnbugevent = True
+    position_mouse = None
 
     pygame.mouse.set_visible(False)  # Погашение системного курсора
     SPAWNBUGEVENT = pygame.USEREVENT + 1
-    pygame.time.set_timer(SPAWNBUGEVENT, TIME)
+    pygame.time.set_timer(SPAWNBUGEVENT, TIME - 2000)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -324,23 +373,25 @@ def start_game():
                 dx, dy = randint(x + 3, screen_game.get_width() - 35), randint(y + 3, screen_game.get_height() - 35)
                 choice(bugs)(dx, dy)
             if event.type == pygame.MOUSEMOTION:
-                cursor.update(event.pos)
+                position_mouse = event.pos
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     stop_game_flag = bool((int(stop_game_flag) + 1) % 2)
+            if event.type == pygame.MOUSEBUTTONDOWN and stop_game_flag and any([cursor.flag_lmb, cursor.flag_rmb]):
+                text_lmb_active = cursor.flag_lmb
+                text_rmb_active = cursor.flag_rmb
+                screen_stop_game = update_screen_pause_menu(screen_stop_game, cursor.flag_lmb, cursor.flag_rmb)
         screen_game.fill((0, 0, 0))
         screen_game.blit(screen_fixed_elements, (0, 0))
         for bug in bugs_group:
             now = bug.is_caught_bug()
             if now:  # Либо False, либо кортеж значений координат x, y и кол-во очков, что будет True
                 x1, y1, points = now
-                text = font_score_bug.render(f"+{points}", True, color_score_bug_text)
-                ScoreBug(x1, y1, points, text)
+                text1 = font_score_bug.render(f"+{points}", True, color_score_bug_text)
+                ScoreBug(x1, y1, points, text1)
         bugs_group.draw(screen_game)
         score_of_bug_group.draw(screen_game)
         score_of_bug_group.update()
-        if pygame.mouse.get_focused():  # Проверка на то, находится ли курсор мыши в экране игры
-            cursor_group.draw(screen_game)
         if not stop_game_flag:
             if pygame.mouse.get_visible():
                 pygame.mouse.set_visible(False)
@@ -349,14 +400,37 @@ def start_game():
                 pygame.time.set_timer(SPAWNBUGEVENT, TIME)
                 flag_set_time_spawnbugevent = True
         else:
-            if not pygame.mouse.get_visible():
-                pygame.mouse.set_visible(True)  # СДЕЛАТЬ ПОСЛЕ СМЕНУ КУРСОРА У ОБЪЕКТА КЛАССА cursor
             screen_game.blit(screen_stop_game, (0, 0))
             if flag_set_time_spawnbugevent:
                 pygame.time.set_timer(SPAWNBUGEVENT, 0)
                 flag_set_time_spawnbugevent = False
+        if pygame.mouse.get_focused():  # Проверка на то, находится ли курсор мыши в экране игры
+            cursor.update(position_mouse, stop_game_flag, rect_of_text_lmb, rect_of_text_rmb)
+            cursor_group.draw(screen_game)
+        if COUNT_LIVES <= 0:
+            print('Вы проиграли')
         pygame.display.flip()
         clock.tick(FPS)
+
+
+def update_screen_pause_menu(screen, status_lmb, status_rmb):
+    text_lmb = font_buttons.render(f'LMB: {dictionary_text_activites[status_lmb]}', True, yellow)
+    text_rmb = font_buttons.render(f'RMB: {dictionary_text_activites[status_rmb]}', True, yellow)
+    maxi_width = max(map(lambda z: z.get_width(), [text_lmb, text_rmb])) + w  # Чтобы было красиво,
+    # прямоугольники все выравниваются под самый длинный прямоугольник
+
+    rect_of_text_lmb = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_lmb - length,
+                                 pygame.Surface((maxi_width, text_lmb.get_height() + h)), 'lmb')
+    rect_of_text_rmb = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_rmb - length,
+                                 pygame.Surface((maxi_width, text_rmb.get_height() + h)), 'rmb')
+
+    pygame.draw.rect(screen, dark_green, rect_of_text_lmb)
+    pygame.draw.rect(screen, dark_green, rect_of_text_rmb)
+
+    screen.blit(text, (WIDTH // 2 - text.get_width() // 2, height_pause))
+    screen.blit(text_lmb, (WIDTH // 2 - text.get_width() // 4, height_lmb))
+    screen.blit(text_rmb, (WIDTH // 2 - text.get_width() // 4, height_rmb))
+    return screen
 
 
 start_game()
