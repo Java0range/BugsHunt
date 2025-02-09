@@ -22,7 +22,7 @@ class Sounds:
         self.game_over = pg.mixer.Sound('./data/game_over.mp3')
         self.game_over.set_volume(0.4)
 
-        pg.mixer_music.load('../../data/Bugs Hunt - Soundtrack (IVJN).wav')
+        pg.mixer_music.load('./data/Bugs Hunt - Soundtrack (IVJN).wav')
         pg.mixer.music.set_volume(0.5)
 
 
