@@ -71,7 +71,7 @@ class Bug(pygame.sprite.Sprite):
                                                                    self.length, self.length)))
 
     def update(self, arg=None):
-        if (pygame.sprite.collide_rect(self, cursor) and not self.bug_at_the_spawn_point_flag
+        if (pygame.sprite.collide_mask(self, cursor) and not self.bug_at_the_spawn_point_flag
                 and arg.type == pygame.MOUSEBUTTONDOWN and self.alive_flag and not self.run_away_flag):
             self.alive_flag = False
             change_standart_speed(1)
@@ -115,26 +115,30 @@ class Bug(pygame.sprite.Sprite):
 
 def change_standart_speed(number):
     global standard_speed
-    if standard_speed > 2 or number >= 0:
+    if standard_speed > 3 or number >= 0:
         standard_speed += number
 
 
-coeff_x = 0.9  # Чтобы баги летели не только под углом 45 градусов, но и хотя бы как-то искривленно
-coeff_y = 0.75
-coeff_red_bug = 1.5
-coeff_pink_bug = 1.3
-coeff_yellow_bug = 1
-coeff_cyan_bug = 0.8
-limit_speed_bugs = {'red': 23, 'pink': 18, 'yellow': 13, 'cyan': 10}  # Это нужно для того, чтобы не было ошибок,
+coeffs_x = [i / 100 for i in
+            range(50, 100)]  # Чтобы баги летели не только под углом 45 градусов, но и хотя бы как-то искривленно
+coeffs_y = [i / 100 for i in range(50, 100)]
+coefficients_of_colors_bug = {'red': 1.5, 'pink': 1.3, 'yellow': 1, 'cyan': 0.8}  # Коэффициенты багов
+divider = 60  # Делитель, на который делится standart_score, при подсчете очков, добавленных за попавшего бага
+limit_speed_bugs = {'red': 25, 'pink': 20, 'yellow': 15, 'cyan': 10}  # Это нужно для того, чтобы не было ошибок,
 # связанных со слишком большими числами
-price_bugs = {'red': 100, 'pink': 75, 'yellow': 50, 'cyan': 25}
+price_bugs = {'red': 100, 'pink': 75, 'yellow': 50, 'cyan': 25}  # Кол-во очков, которое пойманный баг принесет, после
+# умножится на коэфициент, полученный при делении standart_score на divider
 
 
-class RedBug(Bug):
-    def __init__(self, pos_x, pos_y):
-        super().__init__('red', pos_x, pos_y)
-        self.vx, self.vy = (int(choice([standard_speed * coeff_red_bug, -standard_speed * coeff_red_bug]) * coeff_x),
-                            -int(standard_speed * coeff_red_bug * coeff_y))
+class BugColor(Bug):
+    def __init__(self, color, pos_x, pos_y):
+        super().__init__(color, pos_x, pos_y)
+        self.points = None
+        coeff_x, coeff_y = choice(coeffs_x), choice(coeffs_y)
+        self.flag_of_make_return_caught_bug = False
+        self.vx, self.vy = (int(choice([standard_speed * coefficients_of_colors_bug[self.color],
+                                        -standard_speed * coefficients_of_colors_bug[self.color]]) * coeff_x),
+                            -int(standard_speed * coefficients_of_colors_bug[self.color] * coeff_y))
         if abs(self.vx) > limit_speed_bugs[self.color]:
             num = self.vx // abs(self.vx)  # Определить с каким знаком число
             self.vx = limit_speed_bugs[self.color] * num  # И оставить его на лимите
@@ -144,71 +148,37 @@ class RedBug(Bug):
         self.add(red_bugs_group)
 
     def update(self, arg=None):
-        if (pygame.sprite.collide_rect(self, cursor) and not self.bug_at_the_spawn_point_flag
+        if (pygame.sprite.collide_mask(self, cursor) and not self.bug_at_the_spawn_point_flag
                 and arg.type == pygame.MOUSEBUTTONDOWN and self.alive_flag and not self.run_away_flag):
-            add_score(price_bugs[self.color])
+            self.points = int(price_bugs[self.color] * (standard_speed / divider))
+            add_score(self.points)
         super().update(arg)
 
+    def is_caught_bug(self):
+        if not self.alive_flag and not self.flag_of_make_return_caught_bug:
+            self.flag_of_make_return_caught_bug = True
+            return self.rect.x, self.rect.y, self.points
+        return False
 
-class PinkBug(Bug):
+
+class RedBug(BugColor):
+    def __init__(self, pos_x, pos_y):
+        super().__init__('red', pos_x, pos_y)
+
+
+class PinkBug(BugColor):
     def __init__(self, pos_x, pos_y):
         super().__init__('pink', pos_x, pos_y)
-        self.vx, self.vy = (int(choice([standard_speed * coeff_pink_bug, -standard_speed * coeff_pink_bug]) * coeff_x),
-                            -int(standard_speed * coeff_pink_bug * coeff_y))
-        if abs(self.vx) > limit_speed_bugs[self.color]:
-            num = self.vx // abs(self.vx)
-            self.vx = limit_speed_bugs[self.color] * num
-        if abs(self.vy) > limit_speed_bugs[self.color]:
-            num = self.vy // abs(self.vy)
-            self.vy = limit_speed_bugs[self.color] * num
-        self.add(pink_bugs_group)
-
-    def update(self, arg=None):
-        if (pygame.sprite.collide_rect(self, cursor) and not self.bug_at_the_spawn_point_flag
-                and arg.type == pygame.MOUSEBUTTONDOWN and self.alive_flag and not self.run_away_flag):
-            add_score(price_bugs[self.color])
-        super().update(arg)
 
 
-class CyanBug(Bug):
+class CyanBug(BugColor):
     def __init__(self, pos_x, pos_y):
         super().__init__('cyan', pos_x, pos_y)
-        self.vx, self.vy = (int(choice([standard_speed * coeff_cyan_bug, -standard_speed * coeff_cyan_bug]) * coeff_x),
-                            -int(standard_speed * coeff_cyan_bug * coeff_y))
-        if abs(self.vx) > limit_speed_bugs[self.color]:
-            num = self.vx // abs(self.vx)
-            self.vx = limit_speed_bugs[self.color] * num
-        if abs(self.vy) > limit_speed_bugs[self.color]:
-            num = self.vy // abs(self.vy)
-            self.vy = limit_speed_bugs[self.color] * num
-        self.add(cyan_bugs_group)
-
-    def update(self, arg=None):
-        if (pygame.sprite.collide_rect(self, cursor) and not self.bug_at_the_spawn_point_flag
-                and arg.type == pygame.MOUSEBUTTONDOWN and self.alive_flag and not self.run_away_flag):
-            add_score(price_bugs[self.color])
-        super().update(arg)
 
 
-class YellowBug(Bug):
+class YellowBug(BugColor):
     def __init__(self, pos_x, pos_y):
         super().__init__('yellow', pos_x, pos_y)
-        self.vx, self.vy = (int(choice([standard_speed * coeff_yellow_bug,
-                                        -standard_speed * coeff_yellow_bug]) * coeff_x),
-                            -int(standard_speed * coeff_yellow_bug * coeff_y))
-        if abs(self.vx) > limit_speed_bugs[self.color]:
-            num = self.vx // abs(self.vx)
-            self.vx = limit_speed_bugs[self.color] * num
-        if abs(self.vy) > limit_speed_bugs[self.color]:
-            num = self.vy // abs(self.vy)
-            self.vy = limit_speed_bugs[self.color] * num
-        self.add(yellow_bugs_group)
-
-    def update(self, arg=None):
-        if (pygame.sprite.collide_rect(self, cursor) and not self.bug_at_the_spawn_point_flag
-                and arg.type == pygame.MOUSEBUTTONDOWN and self.alive_flag and not self.run_away_flag):
-            add_score(price_bugs[self.color])
-        super().update(arg)
 
 
 def add_score(number):
@@ -240,12 +210,29 @@ class Spawner(pygame.sprite.Sprite):
 class Cursor(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__(cursor_group, all_sprites)
-        self.image = pygame.Surface((0, 0))
-        self.rect = pygame.Rect(0, 0, 1, 1)
+        self.image = load_image('cursor.png')
+        self.rect = self.image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
 
     def update(self, pos):
         self.rect.x = pos[0]
         self.rect.y = pos[1]
+
+
+class ScoreBug(pygame.sprite.Sprite):
+    def __init__(self, x1, y1, score, image):
+        super().__init__(score_of_bug_group, all_sprites)
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.x = x1
+        self.rect.y = y1
+        self.score = score
+        self.number_time = FPS * 1  # Время, которое отображается self.number_time / FPS секунд
+
+    def update(self):
+        if self.number_time <= 0:
+            self.kill()
+        self.number_time -= 1
 
 
 all_sprites = pygame.sprite.Group()
@@ -254,6 +241,7 @@ horizontal_borders_group = pygame.sprite.Group()
 vertical_borders_group = pygame.sprite.Group()
 spawner_group = pygame.sprite.Group()
 cursor_group = pygame.sprite.Group()
+score_of_bug_group = pygame.sprite.Group()
 
 red_bugs_group = pygame.sprite.Group()
 pink_bugs_group = pygame.sprite.Group()
@@ -264,7 +252,9 @@ spawner = Spawner()
 cursor = Cursor()
 
 color = (102, 0, 255)
-green = pygame.Color('green ')
+color_score_bug_text = (250, 215, 0)
+green = pygame.Color('green')
+yellow = pygame.Color('yellow')
 
 
 def terminate():
@@ -284,9 +274,36 @@ def start_game():
     horizontal_borders_group.draw(screen_fixed_elements)
     spawner_group.draw(screen_fixed_elements)
 
+    length = 5  # Величина, на которую сдигается прямоугольник с двух сторон
+    w = h = length * 2  # Ширина и высота прямоугольников
+    height_pause = 10
+    height_lmb = 150
+    height_rmb = 225
+    text_lmb_active = 'On'
+    text_rmb_active = 'Off'
+
     font = pygame.font.Font(None, 100)
-    text = font.render('STOP', True, green)
-    screen_stop_game.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
+    font_buttons = pygame.font.Font(None, 50)
+    font_score_bug = pygame.font.Font(None, 30)
+
+    text = font.render('Pause menu', True, green)
+    text_lmb = font_buttons.render(f'LMB: {text_lmb_active}', True, yellow)
+    text_rmb = font_buttons.render(f'RMB: {text_rmb_active}', True, yellow)
+
+    screen_stop_game.blit(text, (WIDTH // 2 - text.get_width() // 2, height_pause))
+    screen_stop_game.blit(text_lmb, (WIDTH // 2 - text.get_width() // 4, height_lmb))
+    screen_stop_game.blit(text_rmb, (WIDTH // 2 - text.get_width() // 4, height_rmb))
+
+    maxi_width = max(map(lambda z: z.get_width(), [text_lmb, text_rmb])) + w  # Чтобы было красиво,
+    # прямоугольники все выравниваются под самый длинный прямоугольник
+
+    rect_of_text_lmb = pygame.Rect(WIDTH // 2 - text.get_width() // 4 - length, height_lmb - length,
+                                   maxi_width, text_lmb.get_height() + h)
+    rect_of_text_rmb = pygame.Rect(WIDTH // 2 - text.get_width() // 4 - length, height_rmb - length,
+                                   maxi_width, text_rmb.get_height() + h)
+
+    pygame.draw.rect(screen_stop_game, yellow, rect_of_text_lmb, 1)
+    pygame.draw.rect(screen_stop_game, yellow, rect_of_text_rmb, 1)
 
     dx, dy = randint(x + 3, screen_game.get_width() - 35), randint(y + 3, screen_game.get_height() - 35)
 
@@ -296,6 +313,7 @@ def start_game():
     stop_game_flag = False
     flag_set_time_spawnbugevent = True
 
+    pygame.mouse.set_visible(False)  # Погашение системного курсора
     SPAWNBUGEVENT = pygame.USEREVENT + 1
     pygame.time.set_timer(SPAWNBUGEVENT, TIME)
     while True:
@@ -303,7 +321,7 @@ def start_game():
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == SPAWNBUGEVENT:
-                dx, dy = randint(x, screen_game.get_width() - 35), randint(y, screen_game.get_height() - 35)
+                dx, dy = randint(x + 3, screen_game.get_width() - 35), randint(y + 3, screen_game.get_height() - 35)
                 choice(bugs)(dx, dy)
             if event.type == pygame.MOUSEMOTION:
                 cursor.update(event.pos)
@@ -312,14 +330,27 @@ def start_game():
                     stop_game_flag = bool((int(stop_game_flag) + 1) % 2)
         screen_game.fill((0, 0, 0))
         screen_game.blit(screen_fixed_elements, (0, 0))
+        for bug in bugs_group:
+            now = bug.is_caught_bug()
+            if now:  # Либо False, либо кортеж значений координат x, y и кол-во очков, что будет True
+                x1, y1, points = now
+                text = font_score_bug.render(f"+{points}", True, color_score_bug_text)
+                ScoreBug(x1, y1, points, text)
         bugs_group.draw(screen_game)
-        cursor_group.draw(screen_game)
+        score_of_bug_group.draw(screen_game)
+        score_of_bug_group.update()
+        if pygame.mouse.get_focused():  # Проверка на то, находится ли курсор мыши в экране игры
+            cursor_group.draw(screen_game)
         if not stop_game_flag:
+            if pygame.mouse.get_visible():
+                pygame.mouse.set_visible(False)
             bugs_group.update(event)
             if not flag_set_time_spawnbugevent:
                 pygame.time.set_timer(SPAWNBUGEVENT, TIME)
                 flag_set_time_spawnbugevent = True
         else:
+            if not pygame.mouse.get_visible():
+                pygame.mouse.set_visible(True)  # СДЕЛАТЬ ПОСЛЕ СМЕНУ КУРСОРА У ОБЪЕКТА КЛАССА cursor
             screen_game.blit(screen_stop_game, (0, 0))
             if flag_set_time_spawnbugevent:
                 pygame.time.set_timer(SPAWNBUGEVENT, 0)
