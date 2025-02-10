@@ -26,6 +26,7 @@ gameover = False
 play_button = pygame.Rect(355, 290, 95, 48)
 main_menu_button = pygame.Rect(300, 440, 200, 40)
 
+
 # Удобная замена функции pygame.image.load()
 def load_image(name, colorkey=None):
     fullname = path.join('data', name)
@@ -41,6 +42,7 @@ def load_image(name, colorkey=None):
     else:
         image = image.convert_alpha()
     return image
+
 
 # фоны
 menu_background_image = load_image('menu_background.png')
@@ -72,6 +74,8 @@ divider = 60  # Делитель, на который делится standart_sc
 limit_speed_bugs = {'red': 25, 'pink': 20, 'yellow': 15, 'cyan': 10}  # Это нужно для того, чтобы не было ошибок,
 # связанных со слишком большими числами
 price_bugs = {'red': 100, 'pink': 75, 'yellow': 50, 'cyan': 25}  # Кол-во очков, которое пойманный баг принесет, после
+
+
 # умножится на коэфициент, полученный при делении standart_score на divider
 
 # классы и функции
@@ -308,6 +312,7 @@ class Rectangle(pygame.sprite.Sprite):
         self.rect.y = y1
         self.name = name
 
+
 # объявление логики игры
 all_sprites = pygame.sprite.Group()
 bugs_group = pygame.sprite.Group()
@@ -338,7 +343,7 @@ def terminate():  # Выход из игры
     exit()
 
 
-def update_screen_pause_menu(screen, status_lmb, status_rmb): # обновление экрана
+def update_screen_pause_menu(screen, status_lmb, status_rmb):  # обновление экрана
     text_lmb = font_buttons.render(f'LMB: {dictionary_text_activites[status_lmb]}', True, yellow)
     text_rmb = font_buttons.render(f'RMB: {dictionary_text_activites[status_rmb]}', True, yellow)
     maxi_width = max(map(lambda z: z.get_width(), [text_lmb, text_rmb])) + w  # Чтобы было красиво,
@@ -358,6 +363,9 @@ def update_screen_pause_menu(screen, status_lmb, status_rmb): # обновлен
     return screen
 
 
+pygame.display.set_caption('BugsHunt')  # Сделать название окна 'BugsHunt'
+pygame.display.set_icon(load_image('BugsHunt.ico'))  # Задать иконку для окна игры
+
 font = pygame.font.Font(None, 100)
 font_buttons = pygame.font.Font(None, 50)
 font_score_bug = pygame.font.Font(None, 30)
@@ -369,7 +377,6 @@ height_pause = 10
 height_lmb = 150
 height_rmb = 240
 dictionary_text_activites = {True: 'On', False: 'Off'}
-
 
 screen_fixed_elements = pygame.Surface(SIZE)  # Отдельное окно, на котором нарисуются неподвижные объекты 1 раз
 screen_stop_game = load_image('pause_background.png')
@@ -400,14 +407,11 @@ screen_stop_game.blit(text_lmb, (WIDTH // 2 - text.get_width() // 4, height_lmb)
 screen_stop_game.blit(text_rmb, (WIDTH // 2 - text.get_width() // 4, height_rmb))
 cursor.functions = {'lmb': text_lmb_active, 'rmb': text_rmb_active}
 
-dx, dy = randint(x + 3, screen_game.get_width() - 35), randint(y + 3, screen_game.get_height() - 35)
-
 bugs = [RedBug, PinkBug, CyanBug, YellowBug]
-choice(bugs)(dx, dy)
 
 stop_game_flag = False
 flag_set_time_spawnbugevent = True
-position_mouse = (0, 0)
+position_mouse = None
 
 SPAWNBUGEVENT = pygame.USEREVENT + 1
 pygame.time.set_timer(SPAWNBUGEVENT, TIME)
@@ -423,6 +427,8 @@ while running:
                 if play_button.collidepoint(event.pos):
                     main_menu = False
         if not main_menu and not gameover:
+            if position_mouse is None:
+                position_mouse = pygame.mouse.get_pos()
             pygame.mouse.set_visible(False)  # Погашение системного курсора
             if event.type == SPAWNBUGEVENT:
                 dx, dy = randint(x + 3, screen_game.get_width() - 35), randint(y + 3, screen_game.get_height() - 35)
@@ -438,6 +444,9 @@ while running:
                 screen_stop_game = update_screen_pause_menu(screen_stop_game, cursor.flag_lmb, cursor.flag_rmb)
         if gameover:
             pygame.mouse.set_visible(True)
+            standard_speed = 3
+            position_mouse = None
+            bugs_group = pygame.sprite.Group()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if main_menu_button.collidepoint(event.pos):
                     SCORE = 0
@@ -446,7 +455,8 @@ while running:
                     gameover = False
     if main_menu:
         screen_game.blit(menu_background_image, (0, 0))
-        screen_game.blit(main_menu_score_font.render(f"TOP SCORE: {load_score()}", False, pygame.Color("green")), (340, 475))
+        screen_game.blit(main_menu_score_font.render(f"TOP SCORE: {load_score()}", False, pygame.Color("green")),
+                         (340, 475))
     if not main_menu and not gameover:
         screen_game.fill((0, 0, 0))
         screen_game.blit(screen_fixed_elements, (0, 0))
@@ -478,7 +488,7 @@ while running:
             if flag_set_time_spawnbugevent:
                 pygame.time.set_timer(SPAWNBUGEVENT, 0)
                 flag_set_time_spawnbugevent = False
-        if pygame.mouse.get_focused():  # Проверка на то, находится ли курсор мыши в экране игры
+        if pygame.mouse.get_focused() and position_mouse:  # Проверка на то, находится ли курсор мыши в экране игры
             cursor.update(position_mouse, stop_game_flag, rect_of_text_lmb, rect_of_text_rmb)
             cursor_group.draw(screen_game)
         if COUNT_LIVES <= 0:
@@ -490,7 +500,8 @@ while running:
         top_score = load_score()
         screen_game.blit(gameover_background_image, (0, 0))
         screen_game.blit(game_over_big_font.render(f"SCORE: {SCORE}", False, pygame.Color("green")), (300, 300))
-        screen_game.blit(game_over_big_font.render(f"TOP SCORE: {load_score()}", False, pygame.Color("green")), (300, 340))
+        screen_game.blit(game_over_big_font.render(f"TOP SCORE: {load_score()}", False, pygame.Color("green")),
+                         (300, 340))
         if SCORE > top_score:
             save_score(SCORE)
     pygame.display.flip()
