@@ -440,6 +440,7 @@ while running:
             pygame.mouse.set_visible(True)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if main_menu_button.collidepoint(event.pos):
+                    SCORE = 0
                     COUNT_LIVES = 8
                     main_menu = True
                     gameover = False
