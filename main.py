@@ -195,8 +195,9 @@ class BugColor(Bug):
     def update(self, arg=None):
         if (pygame.sprite.collide_mask(self, cursor) and not self.bug_at_the_spawn_point_flag
                 and arg.type == pygame.MOUSEBUTTONDOWN and self.alive_flag and not self.run_away_flag):
-            self.points = int(price_bugs[self.color] * (standard_speed / divider))
-            add_score(self.points)
+            if arg.button == 1 and text_lmb_active or arg.button == 3 and text_rmb_active:  # Проверка, на кнопку мыши
+                self.points = int(price_bugs[self.color] * (standard_speed / divider))
+                add_score(self.points)
         super().update(arg)
 
     def is_caught_bug(self):
