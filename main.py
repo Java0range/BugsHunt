@@ -263,21 +263,25 @@ class Cursor(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.flag_lmb = False
         self.flag_rmb = False
+        self.flag_quit_game = False
         self.mask = pygame.mask.from_surface(self.image)
 
-    def update(self, pos, flag_game_stop, lmb, rmb):
+    def update(self, pos, flag_game_stop, lmb, rmb, quit_game):
         self.flag_lmb = False
         self.flag_rmb = False
+        self.flag_quit_game = False
         if not flag_game_stop:
             self.image = self.image_cursor
         else:
             flag_over_loop = False
-            for rect in [lmb, rmb]:
+            for rect in [lmb, rmb, quit_game]:
                 if pygame.sprite.collide_mask(self, rect):
                     if rect.name == 'lmb':
                         self.flag_lmb = True
                     if rect.name == 'rmb':
                         self.flag_rmb = True
+                    if rect.name == 'quit_game':
+                        self.flag_quit_game = True
                     self.image = self.image_paused_menu_2
                     self.mask = pygame.mask.from_surface(self.image)
                     flag_over_loop = True
@@ -347,6 +351,7 @@ def terminate():  # Выход из игры
 def update_screen_pause_menu(screen, status_lmb, status_rmb):  # обновление экрана
     text_lmb = font_buttons.render(f'LMB: {dictionary_text_activites[status_lmb]}', True, yellow)
     text_rmb = font_buttons.render(f'RMB: {dictionary_text_activites[status_rmb]}', True, yellow)
+    text_quit_game = font_buttons.render('QUIT GAME', True, yellow)
     maxi_width = max(map(lambda z: z.get_width(), [text_lmb, text_rmb])) + w  # Чтобы было красиво,
     # прямоугольники все выравниваются под самый длинный прямоугольник
 
@@ -354,13 +359,17 @@ def update_screen_pause_menu(screen, status_lmb, status_rmb):  # обновле�
                                  pygame.Surface((maxi_width, text_lmb.get_height() + h)), 'lmb')
     rect_of_text_rmb = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_rmb - length,
                                  pygame.Surface((maxi_width, text_rmb.get_height() + h)), 'rmb')
+    rect_of_quit_game = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_quit_game - length,
+                                  pygame.Surface((maxi_width, text_quit_game.get_height() + h)), 'quit_game')
 
     pygame.draw.rect(screen, dark_green, rect_of_text_lmb)
     pygame.draw.rect(screen, dark_green, rect_of_text_rmb)
+    pygame.draw.rect(screen, dark_green, rect_of_quit_game)
 
     screen.blit(text, (WIDTH // 2 - text.get_width() // 2, height_pause))
     screen.blit(text_lmb, (WIDTH // 2 - text.get_width() // 4, height_lmb))
     screen.blit(text_rmb, (WIDTH // 2 - text.get_width() // 4, height_rmb))
+    screen.blit(text_quit_game, (WIDTH // 2 - text.get_width() // 4, height_quit_game))
     return screen
 
 
@@ -377,6 +386,7 @@ w = h = length * 2  # Ширина и высота прямоугольнико�
 height_pause = 10
 height_lmb = 150
 height_rmb = 240
+height_quit_game = 480
 dictionary_text_activites = {True: 'On', False: 'Off'}
 
 screen_fixed_elements = pygame.Surface(SIZE)  # Отдельное окно, на котором нарисуются неподвижные объекты 1 раз
@@ -391,21 +401,26 @@ spawner_group.draw(screen_fixed_elements)
 
 text_lmb = font_buttons.render(f'LMB: {dictionary_text_activites[text_lmb_active]}', True, yellow)
 text_rmb = font_buttons.render(f'RMB: {dictionary_text_activites[text_rmb_active]}', True, yellow)
+text_quit_game = font_buttons.render('QUIT GAME', True, yellow)
 
-maxi_width = max(map(lambda z: z.get_width(), [text_lmb, text_rmb])) + w  # Чтобы было красиво,
+maxi_width = max(map(lambda z: z.get_width(), [text_lmb, text_rmb, text_quit_game])) + w  # Чтобы было красиво,
 # прямоугольники все выравниваются под самый длинный прямоугольник
 
 rect_of_text_lmb = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_lmb - length,
                              pygame.Surface((maxi_width, text_lmb.get_height() + h)), 'lmb')
 rect_of_text_rmb = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_rmb - length,
                              pygame.Surface((maxi_width, text_rmb.get_height() + h)), 'rmb')
+rect_of_quit_game = Rectangle(WIDTH // 2 - text.get_width() // 4 - length, height_quit_game - length,
+                              pygame.Surface((maxi_width, text_quit_game.get_height() + h)), 'quit_game')
 
 pygame.draw.rect(screen_stop_game, dark_green, rect_of_text_lmb)
 pygame.draw.rect(screen_stop_game, dark_green, rect_of_text_rmb)
+pygame.draw.rect(screen_stop_game, dark_green, rect_of_quit_game)
 
 screen_stop_game.blit(text, (WIDTH // 2 - text.get_width() // 2, height_pause))
 screen_stop_game.blit(text_lmb, (WIDTH // 2 - text.get_width() // 4, height_lmb))
 screen_stop_game.blit(text_rmb, (WIDTH // 2 - text.get_width() // 4, height_rmb))
+screen_stop_game.blit(text_quit_game, (WIDTH // 2 - text.get_width() // 4, height_quit_game))
 cursor.functions = {'lmb': text_lmb_active, 'rmb': text_rmb_active}
 
 bugs = [RedBug, PinkBug, CyanBug, YellowBug]
@@ -429,13 +444,14 @@ while running:
                     main_menu = False
         if not main_menu and not gameover:
             if position_mouse is None:
-                position_mouse = pygame.mouse.get_pos()
+                pos_x, pos_y = pygame.mouse.get_pos()
+                position_mouse = (pos_x - cursor.rect.width // 2, pos_y - cursor.rect.height // 2)
             pygame.mouse.set_visible(False)  # Погашение системного курсора
             if event.type == SPAWNBUGEVENT:
                 dx, dy = randint(x + 3, screen_game.get_width() - 35), randint(y + 3, screen_game.get_height() - 35)
                 choice(bugs)(dx, dy)
             if event.type == pygame.MOUSEMOTION:
-                position_mouse = event.pos
+                position_mouse = (event.pos[0] - cursor.rect.width // 2, event.pos[1] - cursor.rect.height // 2)
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     stop_game_flag = bool((int(stop_game_flag) + 1) % 2)
@@ -443,6 +459,8 @@ while running:
                 text_lmb_active = cursor.flag_lmb
                 text_rmb_active = cursor.flag_rmb
                 screen_stop_game = update_screen_pause_menu(screen_stop_game, cursor.flag_lmb, cursor.flag_rmb)
+            if event.type == pygame.MOUSEBUTTONDOWN and stop_game_flag and cursor.flag_quit_game:
+                terminate()
         if gameover:
             pygame.mouse.set_visible(True)
             standard_speed = 3
@@ -465,7 +483,12 @@ while running:
         pygame.draw.rect(screen_game, pygame.Color((0, 255, 42)), (20, 490, 150, 28), 1)
         pygame.draw.rect(screen_game, pygame.Color("black"), (620, 490, 170, 28))
         pygame.draw.rect(screen_game, pygame.Color((0, 255, 42)), (620, 490, 170, 28), 1)
+
+        pygame.draw.rect(screen_game, pygame.Color("black"), (190, 490, 150, 28))
+        pygame.draw.rect(screen_game, pygame.Color((0, 255, 42)), (190, 490, 150, 28), 1)
         screen_game.blit(main_menu_score_font.render(f"SCORE: {SCORE}", False, pygame.Color("green")), (22, 490))
+        screen_game.blit(main_menu_score_font.render(f"DIFFICULTY: {standard_speed - 2}", False, pygame.Color("green")),
+                         (192, 490))
         for lives in range(COUNT_LIVES):
             screen_game.blit(heart_image, (625 + 20 * lives, 495))
         for bug in bugs_group:
@@ -490,7 +513,7 @@ while running:
                 pygame.time.set_timer(SPAWNBUGEVENT, 0)
                 flag_set_time_spawnbugevent = False
         if pygame.mouse.get_focused() and position_mouse:  # Проверка на то, находится ли курсор мыши в экране игры
-            cursor.update(position_mouse, stop_game_flag, rect_of_text_lmb, rect_of_text_rmb)
+            cursor.update(position_mouse, stop_game_flag, rect_of_text_lmb, rect_of_text_rmb, rect_of_quit_game)
             cursor_group.draw(screen_game)
         if COUNT_LIVES <= 0:
             sounds.play_game_over()
